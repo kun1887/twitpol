@@ -5,25 +5,19 @@ import spacy
 from spacy.tokens import Doc
 import emoji
 import re
+import tqdm
+from multiprocessing import cpu_count, Pool
+import numpy as np
 
 
 def fetch_data():
     """
-    fetch the data from the csv files stored in /Users/kun/code/kun1887/TwitPol/raw_data
-    return a dictionary with key = (name, target) and value = dataframe with one tweet coloum
+    fetch the data from the github
 
     """
-
-    files = os.listdir("/Users/kun/code/kun1887/TwitPol/raw_data")
-    data = {}
-
-    for file in files:
-
-        df = pd.read_csv(f"/Users/kun/code/kun1887/TwitPol/raw_data/{file}")
-        target = file[0]
-        tweets = list(df.Tweet.values)
-        key = (file.split("_")[0][1:], target)
-        data.update({key: tweets})
+    url = "https://raw.githubusercontent.com/chouhbik/Sentiment-Analysis-of-Tweets/master/ExtractedTweets.csv"
+    data = pd.read_csv(url)
+    data["target"] = data["Party"].apply(lambda x: 0 if x == "Democrat" else 1)
 
     return data
 
@@ -67,23 +61,33 @@ def preprocess_text(text):
     return lemmas
 
 
-import tqdm
+def preprocess_tweet(tweet):
+    return preprocess_text(tweet)  # REPLACE WITH UR FUNCTION
+
+
+def parallelize_dataframe(df, func, n_cores=cpu_count()):
+    df_split = np.array_split(df, n_cores)
+    pool = Pool(n_cores)
+    df = pd.concat(list(tqdm(pool.imap(func, df_split), total=len(df_split))))
+    pool.close()
+    pool.join()
+    return df
+
+
+# Apply the preprocessing to a DataFrame chunk
+def apply_preprocessing(df_chunk):
+    df_chunk["tweet_clean"] = df_chunk["tweet"].apply(preprocess_tweet)
+    return df_chunk
+
 
 if __name__ == "__main__":
 
-    data_dict = fetch_data()
+    data = fetch_data().sample(frac=0.05)
+    df_sample = parallelize_dataframe(data, apply_preprocessing)
+    df_sample.to_csv("data_cleaned.csv", index=False)
 
-    X_cleaned = pd.DataFrame(columns=["tweet", "target"])
-    X_tweet = []
-    X_target = []
-
-    for person in data_dict.keys():
-        for tweets in tqdm.tqdm(data_dict[person]):
-            X_tweet.append(preprocess_text(tweets))
-            X_target.append(person[1])
-
-    X_cleaned["tweet"] = X_tweet
-    X_cleaned["target"] = X_target
-
-    print(X_cleaned)
-    X_cleaned.to_csv("Cleaned_data.csv", sep=",", index=False, encoding="utf-8")
+    # full data cleaning
+    # for person in data_dict.keys():
+    #     for tweets in tqdm.tqdm(data_dict[person]):
+    #         X_tweet.append(preprocess_text(tweets))
+    #         X_target.append(person[1])
