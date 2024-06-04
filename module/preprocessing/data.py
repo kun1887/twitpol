@@ -1,34 +1,32 @@
-import os
 import pandas as pd
-from pathlib import Path
 import spacy
-from spacy.tokens import Doc
 import emoji
 import re
-import tqdm
-from multiprocessing import cpu_count, Pool
 import numpy as np
+from multiprocessing import Pool, cpu_count
+from tqdm import tqdm
 
 
 def fetch_data():
     """
-    fetch the data from the github
-
+    Fetch the data from the GitHub repository
     """
     url = "https://raw.githubusercontent.com/chouhbik/Sentiment-Analysis-of-Tweets/master/ExtractedTweets.csv"
-    data = pd.read_csv(url)
-    data["target"] = data["Party"].apply(lambda x: 0 if x == "Democrat" else 1)
+    df = pd.read_csv(url)
+    df.columns = df.columns.str.lower()
+    df["y"] = df.party.apply(lambda x: x == "Democrat")
+    df = df.drop(["party", "handle"], axis=1)
+    return df
 
-    return data
+
+# Load SpaCy model and add emoji component
+nlp = spacy.load("en_core_web_sm")
 
 
 def preprocess_text(text):
     """
-    clen a string of words and return a list of lemmatized tokens
+    Clean a string of words and return a list of lemmatized tokens
     """
-
-    nlp = spacy.load("en_core_web_sm")
-
     # Lowercase the text
     text = text.lower()
     # Remove sentences starting with 'RT ' or '@' (hashtags)
@@ -46,23 +44,17 @@ def preprocess_text(text):
     # Tokenize the text
     doc = nlp(text)
     tokens = [token for token in doc]
-    # Remove stopwords
-    # tokens = [token for token in tokens if not token.is_stop or not token.is_punct]
-    cleanded_tokens = []
-    for each in tokens:
-        if each.is_punct or each.is_stop:
-            continue
-        else:
-            cleanded_tokens.append(each)
-
+    # Remove stopwords and punctuation
+    cleaned_tokens = [
+        token for token in tokens if not token.is_punct and not token.is_stop
+    ]
     # Lemmatize the tokens
-    lemmas = [token.lemma_ for token in cleanded_tokens if token.text != " "]
-
+    lemmas = [token.lemma_ for token in cleaned_tokens if token.text != " "]
     return lemmas
 
 
 def preprocess_tweet(tweet):
-    return preprocess_text(tweet)  # REPLACE WITH UR FUNCTION
+    return preprocess_text(tweet)
 
 
 def parallelize_dataframe(df, func, n_cores=cpu_count()):
@@ -81,13 +73,7 @@ def apply_preprocessing(df_chunk):
 
 
 if __name__ == "__main__":
-
-    data = fetch_data().sample(frac=0.05)
+    data = fetch_data().sample(frac=0.3)
+    data = data.loc[~data.tweet.str.contains("RT ")]
     df_sample = parallelize_dataframe(data, apply_preprocessing)
     df_sample.to_csv("data_cleaned.csv", index=False)
-
-    # full data cleaning
-    # for person in data_dict.keys():
-    #     for tweets in tqdm.tqdm(data_dict[person]):
-    #         X_tweet.append(preprocess_text(tweets))
-    #         X_target.append(person[1])
