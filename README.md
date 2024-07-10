@@ -11,4 +11,4 @@ A neural network that classify a tweet according to its political inclination
 
 An example of LIME model prediction explainer plot:
 
-![](img/Screenshot 2024-07-10 at 18.28.28.png)
+<img src="img/Screenshot 2024-07-10 at 18.28.28.png" alt="MarineGEO circle logo" style="height: 400px; width:700px;"/>
