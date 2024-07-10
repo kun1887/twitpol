@@ -16,8 +16,6 @@ import pickle
 import lime
 from lime.lime_text import LimeTextExplainer
 
-breakpoint()
-
 
 path = input("Insert clean dataframe path: ")
 data = pd.read_csv(path)
@@ -55,7 +53,6 @@ voc = vectorizer.get_vocabulary()
 word_index = dict(zip(voc, range(len(voc))))
 
 # Create the embendding layer with pretrained weights
-
 path_to_glove_file = input("path to glove files: ")
 
 embeddings_index = {}
@@ -72,7 +69,7 @@ embedding_dim = 200
 hits = 0
 misses = 0
 
-# Prepare embedding matrix
+# Prepare embedding matrix and pretrained embedding layer
 
 embedding_matrix = np.zeros((num_tokens, embedding_dim))
 for word, i in word_index.items():
